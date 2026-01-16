@@ -1,0 +1,22 @@
+# HTTP запросы
+aiohttp>=3.9.0
+httpx>=0.27.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Supabase
+supabase>=2.0.0
+
+# ВКонтакте
+vk-api>=11.9.0
+
+# Telegram
+telethon>=1.34.0
+
+# ML фильтрация
+scikit-learn>=1.4.0
+joblib>=1.3.0
+
+# Утилиты
+python-dotenv>=1.0.0
+loguru>=0.7.0
