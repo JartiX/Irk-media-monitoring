@@ -151,7 +151,7 @@ class MLClassifier:
 
                     # Логируем какие посты модель отклонила
                     if not post.is_relevant:
-                        logger.info(f"ML классификация: модель отклонила пост, который keyword посчитал релевантным: {post.content[:100]}")
+                        logger.debug(f"ML классификация: модель отклонила пост, который keyword посчитал релевантным: {post.content[:100]}")
 
                 post.relevance_score = combined_score
             else:

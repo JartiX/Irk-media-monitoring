@@ -12,7 +12,7 @@ from loguru import logger
 import config
 from database.supabase_client import SupabaseClient
 from database.models import Source
-from parsers.sites.irk_ru import IrkRuParser
+
 from parsers.vk_parser import VKParser
 from parsers.telegram_parser import TelegramParser
 from filters.keywords import KeywordFilter
@@ -80,23 +80,25 @@ class MediaMonitor:
         """Обработать новостные источники"""
         logger.info("\nОбработка новостных источников...")
 
-        try:
-            # IRK.ru
-            source = await self._get_or_create_source(
-                name="IRK.ru",
-                source_type="news",
-                url=config.IRK_RU_URL
-            )
 
-            parser = IrkRuParser(source["id"])
-            posts = await parser.fetch_posts()
 
-            if posts:
-                await self._process_posts(posts, parser)
+        for name, url, parser_class in config.NEWS_SOURCES:
+            try:
+                source = await self._get_or_create_source(
+                    name=name,
+                    source_type="news",
+                    url=url
+                )
 
-        except Exception as e:
-            logger.error(f"Ошибка обработки IRK.ru: {e}")
-            self.stats["errors"] += 1
+                parser = parser_class(source["id"])
+                posts = await parser.fetch_posts()
+
+                if posts:
+                    await self._process_posts(posts, parser)
+
+            except Exception as e:
+                logger.error(f"Ошибка обработки {name}: {e}")
+                self.stats["errors"] += 1
 
     async def _process_vk_sources(self):
         """Обработать источники ВКонтакте"""

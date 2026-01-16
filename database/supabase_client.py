@@ -94,7 +94,7 @@ class SupabaseClient:
             return None  # None = не новый пост
 
         response = self.client.table("posts").insert(post.to_dict()).execute()
-        logger.info(f"Добавлен пост: {post.external_id}")
+        logger.debug(f"Добавлен пост: {post.external_id}")
         return response.data[0]
 
     def add_posts_batch(self, posts: list[Post]) -> list[dict]:

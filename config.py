@@ -4,7 +4,14 @@
 import os
 from dotenv import load_dotenv
 import re
-
+from parsers.sites import (
+    IrkRuParser,
+    TravelBaikalParser,
+    IrCityParser,
+    AifIrkParser,
+    IrkRaionParser,
+    IrkutskoinformParser,
+)
 
 load_dotenv()
 
@@ -2073,9 +2080,16 @@ NEGATIVE_ML_TRAIN = [
     "Объект изучается историками, культурологами и этнографами",
 ]
 
-# IRK.ru - новостной источник
-# Конфигурация вынесена в отдельный парсер: parsers/sites/irk_ru.py
-IRK_RU_URL = "https://www.irk.ru"
+# Новостные источники
+# Конфигурация вынесена в отдельные парсеры: parsers/sites/
+NEWS_SOURCES = [
+    ("IRK.ru", "https://www.irk.ru", IrkRuParser),
+    ("Travel-Baikal.info", "https://travel-baikal.info", TravelBaikalParser),
+    ("IrCity.ru", "https://ircity.ru", IrCityParser),
+    ("АиФ Иркутск", "https://irk.aif.ru", AifIrkParser),
+    ("Иркутский район", "https://www.irkraion.ru", IrkRaionParser),
+    ("Иркутскинформ", "https://xn--h1aafalfhlffkls.xn--p1ai", IrkutskoinformParser),
+]
 
 # Группы ВКонтакте (ID или screen_name)
 VK_GROUPS = [
