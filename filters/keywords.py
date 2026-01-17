@@ -87,7 +87,7 @@ class KeywordFilter:
             score = geo_bonus + low_impact_bonus
             score = max(0.0, min(1.0, score))
             if score > 0:
-                logger.debug(f"Нет high-impact слов, но есть GEO/Low-impact: GEO={geo_matches}, Low-impact={low_impact_matches}")
+                logger.debug(f"Релевантно ({score:.2f}): Нет high-impact слов, но есть GEO/Low-impact: GEO={geo_matches}, Low-impact={low_impact_matches}")
                 return False, score  # не релевантно, но есть маленький шанс
             return False, 0.0
 
@@ -119,6 +119,7 @@ class KeywordFilter:
             list: Список постов с обновлёнными полями is_relevant и relevance_score
         """
         for post in posts:
+            logger.debug(f"Keywords фильтрация: Фильтрация поста {post.content[:100]}")
             # Объединяем заголовок и контент для анализа
             full_text = f"{post.title or ''} {post.content}".strip()
             is_relevant, score = self.check_relevance(full_text)

@@ -132,6 +132,8 @@ class MLClassifier:
             return posts
 
         for post in posts:
+            logger.debug(f"ML классификация: Фильтрация поста {post.content[:100]}")
+
             full_text = f"{post.title or ''} {post.content}".strip()
             is_relevant, score = self.predict(full_text)
 
@@ -151,7 +153,7 @@ class MLClassifier:
 
                     # Логируем какие посты модель отклонила
                     if not post.is_relevant:
-                        logger.debug(f"ML классификация: модель отклонила пост, который keyword посчитал релевантным: {post.content[:100]}")
+                        logger.debug(f"Модель опровергла пост, который keyword посчитал релевантным")
 
                 post.relevance_score = combined_score
             else:
@@ -159,9 +161,11 @@ class MLClassifier:
                 if score >= 0.7 and post.relevance_score >= 0:  # Высокий порог для ML-only и отсутствие негативных слов
                     post.is_relevant = True
                     post.relevance_score = score
+                    logger.debug(f"Модель уверена в релевантности поста")
                 else:
                     if post.relevance_score >= 0:
                         post.relevance_score = combined_score
+            logger.debug(f"Итоговый статус - Релевантность:{post.is_relevant} Score:({post.relevance_score})")
 
         relevant_count = sum(1 for p in posts if p.is_relevant)
         logger.info(f"ML классификация: {relevant_count}/{len(posts)} постов релевантны туризму")

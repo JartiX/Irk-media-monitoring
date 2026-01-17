@@ -4,6 +4,7 @@
 from abc import abstractmethod
 from datetime import datetime, timedelta
 from typing import Optional
+import asyncio
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -26,7 +27,18 @@ class BaseNewsParser(BaseParser):
 
     # HTTP заголовки для запросов
     DEFAULT_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0"
     }
 
     def __init__(self, source_id: str, source_name: str, base_url: str):
@@ -53,19 +65,42 @@ class BaseNewsParser(BaseParser):
         # или загружают их через JavaScript
         return []
 
-    async def _fetch_page(self, url: str, session: aiohttp.ClientSession) -> Optional[BeautifulSoup]:
-        """Загрузить страницу и вернуть BeautifulSoup объект"""
-        try:
-            async with session.get(url, headers=self.DEFAULT_HEADERS, timeout=30) as response:
-                if response.status != 200:
-                    self.log_debug(f"HTTP {response.status} для {url}")
-                    return None
+    async def _fetch_page(self, url: str, session: aiohttp.ClientSession, max_retries: int = 3) -> Optional[BeautifulSoup]:
+        """Загрузить страницу и вернуть BeautifulSoup объект с retry логикой"""
+        last_error = None
 
-                content = await response.text()
-                return BeautifulSoup(content, "lxml")
-        except Exception as e:
-            self.log_debug(f"Ошибка загрузки {url}: {e}")
-            return None
+        for attempt in range(max_retries):
+            try:
+                # Добавляем небольшую задержку перед повторными попытками
+                if attempt > 0:
+                    delay = 2 ** attempt  # Экспоненциальная задержка: 2, 4, 8 секунд
+                    self.log_debug(f"Повторная попытка #{attempt + 1} после {delay}s задержки для {url}")
+                    await asyncio.sleep(delay)
+
+                async with session.get(url, headers=self.DEFAULT_HEADERS, timeout=30) as response:
+                    if response.status == 200:
+                        content = await response.text()
+                        return BeautifulSoup(content, "lxml")
+                    elif response.status in (403, 428, 429):  # Блокировка/Rate limit
+                        self.log_debug(f"HTTP {response.status} для {url} (попытка {attempt + 1}/{max_retries})")
+                        last_error = f"HTTP {response.status}"
+                        if attempt < max_retries - 1:
+                            continue  # Повторить попытку
+                    else:
+                        self.log_debug(f"HTTP {response.status} для {url}")
+                        return None
+
+            except asyncio.TimeoutError:
+                last_error = "Timeout"
+                self.log_debug(f"Timeout при загрузке {url} (попытка {attempt + 1}/{max_retries})")
+            except Exception as e:
+                last_error = str(e)
+                self.log_debug(f"Ошибка загрузки {url}: {e} (попытка {attempt + 1}/{max_retries})")
+
+        # Все попытки исчерпаны
+        if last_error:
+            self.log_debug(f"Не удалось загрузить {url} после {max_retries} попыток. Последняя ошибка: {last_error}")
+        return None
 
     def _make_absolute_url(self, url: str) -> str:
         """Преобразовать относительный URL в абсолютный"""
