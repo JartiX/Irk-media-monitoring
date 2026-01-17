@@ -2090,32 +2090,32 @@ NEGATIVE_ML_TRAIN = [
 # Конфигурация вынесена в отдельные парсеры: parsers/sites/
 NEWS_SOURCES = [
     ("IRK.ru", "https://www.irk.ru", IrkRuParser),
-    # ("Travel-Baikal.info", "https://travel-baikal.info", TravelBaikalParser),
-    # ("IrCity.ru", "https://ircity.ru", IrCityParser),
-    # ("АиФ Иркутск", "https://irk.aif.ru", AifIrkParser),
-    # ("Иркутский район", "https://www.irkraion.ru", IrkRaionParser),
-    # ("Иркутскинформ", "https://xn--h1aafalfhlffkls.xn--p1ai", IrkutskoinformParser),
+    ("Travel-Baikal.info", "https://travel-baikal.info", TravelBaikalParser),
+    ("IrCity.ru", "https://ircity.ru", IrCityParser),
+    ("АиФ Иркутск", "https://irk.aif.ru", AifIrkParser),
+    ("Иркутский район", "https://www.irkraion.ru", IrkRaionParser),
+    ("Иркутскинформ", "https://xn--h1aafalfhlffkls.xn--p1ai", IrkutskoinformParser),
 ]
 
 # Группы ВКонтакте (ID или screen_name)
 VK_GROUPS = [
-    # "visitirkutskregion",
-    # "sgt_isu",
-    # "habara_group",
-    # "myirkutsk_info",
-    # "kudap_irkutsk",
-    # "baikalpro38",
-    # "baikalburyatia",
-    # "baikal_retreat_olhon",
+    "visitirkutskregion",
+    "sgt_isu",
+    "habara_group",
+    "myirkutsk_info",
+    "kudap_irkutsk",
+    "baikalpro38",
+    "baikalburyatia",
+    "baikal_retreat_olhon",
 ]
 
 # Telegram каналы
 TELEGRAM_CHANNELS = [
-    # "Baikal_Daily",
-    # "Baikal_People",
-    # "ircity_ru",
-    # "irkru",
-    # "admirk",
+    "Baikal_Daily",
+    "Baikal_People",
+    "ircity_ru",
+    "irkru",
+    "admirk",
 ]
 
 # Настройки парсинга
