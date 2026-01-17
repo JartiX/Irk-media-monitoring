@@ -17,6 +17,7 @@ from parsers.vk_parser import VKParser
 from parsers.telegram_parser import TelegramParser
 from filters.keywords import KeywordFilter
 from filters.ml_classifier import MLClassifier, initialize_classifier
+from notifications import send_report
 
 
 # Настройка логирования
@@ -75,6 +76,9 @@ class MediaMonitor:
         # Выводим статистику
         elapsed = (datetime.now() - start_time).total_seconds()
         self._print_stats(elapsed)
+
+        # Отправляем отчет в Telegram
+        await self._send_telegram_report(elapsed)
 
     async def _process_news_sources(self):
         """Обработать новостные источники"""
@@ -285,6 +289,15 @@ class MediaMonitor:
                 f"   Полезных комментариев: {db_stats['useful_comments_count']}")
         except Exception as e:
             logger.debug(f"Не удалось получить статистику БД: {e}")
+
+    async def _send_telegram_report(self, elapsed_seconds: float):
+        """Отправить отчет в Telegram бота"""
+        try:
+            db_stats = self.db.get_stats()
+        except Exception:
+            db_stats = None
+
+        await send_report(self.stats, elapsed_seconds, db_stats)
 
 
 async def main():
