@@ -29,7 +29,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r requirements_bert.txt
 
+      - name: Login to HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf auth login --token $HF_TOKEN
+          
       - name: Create directories
         run: |
           mkdir -p logs
@@ -50,6 +57,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_PHONE: ${{ secrets.TELEGRAM_PHONE }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          # HuggingFace
+          HF_REPO: ${{ secrets.HF_REPO }}
         run: python main.py
 
       - name: Upload logs

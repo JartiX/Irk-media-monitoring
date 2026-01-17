@@ -63,8 +63,12 @@ class MediaMonitor:
         logger.info("=" * 60)
 
         # Инициализация ML классификатора
+        # Тип классификатора определяется в config.ML_SETTINGS["classifier_type"]
+        # Поддерживаются: "bert" (rubert-tiny2) и "tfidf" (TF-IDF + LogReg)
         try:
             self.ml_classifier = initialize_classifier()
+            classifier_type = getattr(self.ml_classifier, 'classifier_type', 'unknown')
+            logger.info(f"ML классификатор инициализирован (тип: {classifier_type})")
         except Exception as e:
             logger.warning(f"ML классификатор недоступен: {e}")
 
