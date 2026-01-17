@@ -77,7 +77,19 @@ PARSE_SETTINGS = {
 
 # Настройки ML классификатора
 ML_SETTINGS = {
+    # Общие настройки
     "relevance_threshold": 0.5,
-    "model_path": "models/classifier.joblib",
-    "vectorizer_path": "models/vectorizer.joblib",
+    "classifier_type": "bert",  # "tfidf" или "bert"
+
+    # TF-IDF настройки (fallback)
+    "tfidf_model_path": "models/classifier.joblib",
+    "tfidf_vectorizer_path": "models/vectorizer.joblib",
+
+    # BERT настройки
+    "bert_model_path": "models/bert_classifier",
+    "bert_base_model": "cointegrated/rubert-tiny2",
+    "bert_max_length": 512,
+    "bert_batch_size": 16,
+    "bert_epochs": 3,
+    "bert_learning_rate": 2e-5,
 }

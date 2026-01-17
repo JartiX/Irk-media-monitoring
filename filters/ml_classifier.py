@@ -1,5 +1,5 @@
 """
-ML классификатор релевантности на основе TF-IDF
+ML классификатор релевантности на основе TF-IDF или BERT
 """
 import os
 from typing import Tuple, Optional
@@ -16,177 +16,78 @@ import ml
 
 
 class MLClassifier:
-    """ML классификатор релевантности туристического контента"""
+    """
+    ML классификатор с поддержкой TF-IDF и BERT backends.
+    Выбор backend определяется настройкой classifier_type в config.ML_SETTINGS.
+    """
 
-    def __init__(self):
-        self.vectorizer: Optional[TfidfVectorizer] = None
-        self.model: Optional[LogisticRegression] = None
-        self.threshold = config.ML_SETTINGS["relevance_threshold"]
-        
-        self.is_trained = False
-
-        # Пытаемся загрузить обученную модель
-        self._load_model()
-
-    def _load_model(self):
-        """Загрузить обученную модель если существует"""
-        model_path = config.ML_SETTINGS["model_path"]
-        vectorizer_path = config.ML_SETTINGS["vectorizer_path"]
-
-        if os.path.exists(model_path) and os.path.exists(vectorizer_path):
-            try:
-                self.model = joblib.load(model_path)
-                self.vectorizer = joblib.load(vectorizer_path)
-                self.is_trained = True
-                logger.info("ML модель загружена")
-            except Exception as e:
-                logger.warning(f"Ошибка загрузки модели: {e}")
-                self.is_trained = False
-
-    def train(self, texts: list[str], labels: list[int]):
+    def __init__(self, classifier_type: str = None):
         """
-        Обучить классификатор.
+        Инициализация классификатора.
 
         Args:
-            texts: Список текстов для обучения
-            labels: Метки (1 = релевантно туризму, 0 = нет)
+            classifier_type: Тип классификатора ("bert" или "tfidf").
+                            Если None, используется значение из config.
         """
-        if len(texts) < 50:
-            logger.warning("Недостаточно данных для обучения (минимум 50)")
-            return
+        self.classifier_type = classifier_type or config.ML_SETTINGS.get("classifier_type", "tfidf")
+        self._backend = None
+        self._initialize_backend()
 
-        logger.info(f"Обучение на {len(texts)} примерах...")
+    def _initialize_backend(self):
+        """Инициализировать выбранный backend"""
+        if self.classifier_type == "bert":
+            try:
+                from .bert_classifier import BertClassifier
+                self._backend = BertClassifier()
+                logger.info("Используется BERT классификатор")
+            except ImportError as e:
+                logger.warning(f"BERT недоступен (не установлены зависимости): {e}")
+                logger.info("Переключение на TF-IDF классификатор")
+                from .tfidf_classifier import TfidfClassifier
+                self._backend = TfidfClassifier()
+                self.classifier_type = "tfidf"
+            except Exception as e:
+                logger.warning(f"Ошибка инициализации BERT: {e}")
+                logger.info("Переключение на TF-IDF классификатор")
+                from .tfidf_classifier import TfidfClassifier
+                self._backend = TfidfClassifier()
+                self.classifier_type = "tfidf"
+        else:
+            from .tfidf_classifier import TfidfClassifier
+            self._backend = TfidfClassifier()
+            logger.info("Используется TF-IDF классификатор")
 
-        # Разделяем на train/test
-        X_train, X_test, y_train, y_test = train_test_split(
-            texts, labels, test_size=0.2, random_state=42
-        )
+    @property
+    def is_trained(self) -> bool:
+        """Проверить, обучен ли классификатор"""
+        return self._backend.is_trained if self._backend else False
 
-        # TF-IDF векторизация
-        self.vectorizer = TfidfVectorizer(
-            max_features=5000,
-            ngram_range=(1, 2),
-            min_df=2,
-            max_df=0.95
-        )
+    @property
+    def threshold(self) -> float:
+        """Получить порог релевантности"""
+        return self._backend.threshold if self._backend else config.ML_SETTINGS["relevance_threshold"]
 
-        X_train_vec = self.vectorizer.fit_transform(X_train)
-        X_test_vec = self.vectorizer.transform(X_test)
-
-        # Обучение модели
-        self.model = LogisticRegression(
-            max_iter=1000,
-            class_weight='balanced'
-        )
-        self.model.fit(X_train_vec, y_train)
-
-        # Оценка
-        y_pred = self.model.predict(X_test_vec)
-        logger.info("\nОценка модели:")
-        logger.info(classification_report(y_test, y_pred, target_names=['Не туризм', 'Туризм']))
-
-        # Сохраняем модель
-        self._save_model()
-        self.is_trained = True
-
-    def _save_model(self):
-        """Сохранить модель"""
-        model_dir = os.path.dirname(config.ML_SETTINGS["model_path"])
-        os.makedirs(model_dir, exist_ok=True)
-
-        joblib.dump(self.model, config.ML_SETTINGS["model_path"])
-        joblib.dump(self.vectorizer, config.ML_SETTINGS["vectorizer_path"])
-        logger.info("ML модель сохранена")
+    def train(self, texts: list[str], labels: list[int]):
+        """Обучить классификатор"""
+        if self._backend:
+            return self._backend.train(texts, labels)
 
     def predict(self, text: str) -> Tuple[bool, float]:
-        """
-        Предсказать релевантность текста.
-
-        Returns:
-            Tuple[bool, float]: (is_relevant, probability)
-        """
-        if not self.is_trained or not text:
-            return False, 0.0
-
-        try:
-            X = self.vectorizer.transform([text])
-            proba = self.model.predict_proba(X)[0]
-
-            # Вероятность класса "туризм" (индекс 1)
-            tourism_proba = proba[1] if len(proba) > 1 else proba[0]
-
-            is_relevant = tourism_proba >= self.threshold
-            return is_relevant, float(tourism_proba)
-
-        except Exception as e:
-            logger.error(f"Ошибка предсказания: {e}")
-            return False, 0.0
+        """Предсказать релевантность текста"""
+        if self._backend:
+            return self._backend.predict(text)
+        return False, 0.0
 
     def classify_posts(self, posts: list) -> list:
-        """
-        Классифицировать список постов с помощью ML.
-
-        Если модель не обучена, возвращает посты без изменений.
-        """
-        if not self.is_trained:
-            logger.warning("ML модель не обучена, пропускаем классификацию")
-            return posts
-
-        for post in posts:
-            logger.debug(f"ML классификация: Фильтрация поста {post.content[:100]}")
-
-            full_text = f"{post.title or ''} {post.content}".strip()
-            is_relevant, score = self.predict(full_text)
-
-            # ML дополняет фильтрацию по ключевым словам
-            # Если keywords уже пометили как релевантное, ML может подтвердить или опровергнуть
-            
-            # Комбинируем оценки: keyword_score * 0.4 + ml_score * 0.6
-            combined_score = post.relevance_score * 0.4 + score * 0.6
-            if post.is_relevant:
-
-                # Если модель тоже считает пост релевантным, пропускаем
-                if is_relevant:
-                    post.is_relevant = True
-                    
-                else:
-                    post.is_relevant = combined_score >= self.threshold
-
-                    # Логируем какие посты модель отклонила
-                    if not post.is_relevant:
-                        logger.debug(f"Модель опровергла пост, который keyword посчитал релевантным")
-
-                post.relevance_score = combined_score
-            else:
-                # Если keywords не нашёл, но ML уверен - помечаем как релевантное
-                if score >= 0.7 and post.relevance_score >= 0:  # Высокий порог для ML-only и отсутствие негативных слов
-                    post.is_relevant = True
-                    post.relevance_score = score
-                    logger.debug(f"Модель уверена в релевантности поста")
-                else:
-                    if post.relevance_score >= 0:
-                        post.relevance_score = combined_score
-            logger.debug(f"Итоговый статус - Релевантность:{post.is_relevant} Score:({post.relevance_score})")
-
-        relevant_count = sum(1 for p in posts if p.is_relevant)
-        logger.info(f"ML классификация: {relevant_count}/{len(posts)} постов релевантны туризму")
-
+        """Классифицировать список постов"""
+        if self._backend:
+            return self._backend.classify_posts(posts)
         return posts
-
 
     @staticmethod
     def create_training_dataset() -> Tuple[list[str], list[int]]:
-        """
-        Создать начальный датасет для обучения.
-
-        Использует примеры из ключевых слов для генерации обучающих данных.
-        В реальном применении следует собрать и разметить реальные данные.
-        """
-
-        # Примеры релевантного контента (туризм)
+        """Создать датасет из примеров в ml/"""
         positive_examples = ml.POSITIVE_ML_TRAIN
-
-        # Примеры нерелевантного контента
         negative_examples = ml.NEGATIVE_ML_TRAIN
 
         texts = positive_examples + negative_examples
@@ -194,11 +95,19 @@ class MLClassifier:
 
         return texts, labels
 
-
 # Функция для инициализации и обучения модели
-def initialize_classifier() -> MLClassifier:
-    """Инициализировать и при необходимости обучить классификатор"""
-    classifier = MLClassifier()
+def initialize_classifier(classifier_type: str = None) -> MLClassifier:
+    """
+    Инициализировать и при необходимости обучить классификатор.
+
+    Args:
+        classifier_type: Тип классификатора ("bert" или "tfidf").
+                        Если None, используется значение из config.
+
+    Returns:
+        MLClassifier: Инициализированный классификатор
+    """
+    classifier = MLClassifier(classifier_type=classifier_type)
 
     if not classifier.is_trained:
         logger.info("Обучаем ML классификатор на базовом датасете...")
