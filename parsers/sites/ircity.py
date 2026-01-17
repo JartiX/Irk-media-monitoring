@@ -87,6 +87,15 @@ class IrCityParser(BaseNewsParser):
         self.tourism_section = "/text/tags/turizm/"
         self.skip_relevance_check = False
 
+        # Дополнительные заголовки для IrCity
+        self.DEFAULT_HEADERS.update({
+            "Referer": "https://ircity.ru/",
+            "Origin": "https://ircity.ru",
+            "Sec-Ch-Ua": '"Not A(Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+        })
+
     async def _parse_section(self) -> list[Post]:
         """Парсинг раздела туризма"""
         posts = []
