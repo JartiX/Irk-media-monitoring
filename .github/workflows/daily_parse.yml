@@ -48,6 +48,7 @@ jobs:
           TELEGRAM_SESSION_STRING: ${{ secrets.TELEGRAM_SESSION_STRING }}
           # Telegram chat-bot
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_PHONE_NUMBER: ${{ secrets.TELEGRAM_PHONE_NUMBER }}
           TELEGRAM_CHAT_IDS: ${{ secrets.CHAT_IDS }}
         run: python main.py
 
