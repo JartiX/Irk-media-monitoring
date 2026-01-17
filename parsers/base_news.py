@@ -92,14 +92,14 @@ class BaseNewsParser(BaseParser):
 
             except asyncio.TimeoutError:
                 last_error = "Timeout"
-                self.log_debug(f"Timeout при загрузке {url} (попытка {attempt + 1}/{max_retries})")
+                self.log_error(f"Timeout при загрузке {url} (попытка {attempt + 1}/{max_retries})")
             except Exception as e:
                 last_error = str(e)
-                self.log_debug(f"Ошибка загрузки {url}: {e} (попытка {attempt + 1}/{max_retries})")
+                self.log_error(f"Ошибка загрузки {url}: {e} (попытка {attempt + 1}/{max_retries})")
 
         # Все попытки исчерпаны
         if last_error:
-            self.log_debug(f"Не удалось загрузить {url} после {max_retries} попыток. Последняя ошибка: {last_error}")
+            self.log_error(f"Не удалось загрузить {url} после {max_retries} попыток. Последняя ошибка: {last_error}")
         return None
 
     def _make_absolute_url(self, url: str) -> str:
