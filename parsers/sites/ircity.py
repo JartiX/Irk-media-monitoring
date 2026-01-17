@@ -104,19 +104,37 @@ class IrCityParser(BaseNewsParser):
 
         # Создаём сессию с поддержкой cookies для DDoS-Guard
         cookie_jar = aiohttp.CookieJar(unsafe=True)
-        async with aiohttp.ClientSession(cookie_jar=cookie_jar) as session:
-            # Первый запрос для получения DDoS-Guard cookie
+        connector = aiohttp.TCPConnector(ssl=False)  # Отключаем SSL verification для DDoS-Guard
+        async with aiohttp.ClientSession(cookie_jar=cookie_jar, connector=connector) as session:
+            # Первый запрос для получения DDoS-Guard cookie (следуем редиректам)
             try:
-                async with session.get(self.base_url, headers=self.DEFAULT_HEADERS, timeout=30) as response:
+                async with session.get(
+                    self.base_url,
+                    headers=self.DEFAULT_HEADERS,
+                    timeout=30,
+                    allow_redirects=True
+                ) as response:
+                    # Читаем содержимое, чтобы cookie точно установился
+                    await response.text()
                     self.log_debug(f"Получение DDoS-Guard cookie: HTTP {response.status}")
-                    # Даём время серверу установить cookie
-                    await asyncio.sleep(2)
+
+                    # Логируем все cookies
+                    cookies = session.cookie_jar.filter_cookies(self.base_url)
+                    if cookies:
+                        cookie_names = [cookie.key for cookie in cookies.values()]
+                        self.log_debug(f"Получены cookies: {', '.join(cookie_names)}")
+                    else:
+                        self.log_debug("⚠️ Cookies не получены - DDoS-Guard может блокировать")
+
+                    # Увеличиваем задержку для установки cookie
+                    await asyncio.sleep(3)
             except Exception as e:
                 self.log_debug(f"Ошибка при получении cookie: {e}")
 
             # Теперь делаем основной запрос с полученным cookie
             soup = await self._fetch_page(url, session)
             if not soup:
+                self.log_info("⚠️ Не удалось получить данные (возможна блокировка DDoS-Guard)")
                 return posts
 
             links = await self._get_article_links(soup)
