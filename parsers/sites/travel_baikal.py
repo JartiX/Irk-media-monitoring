@@ -73,7 +73,7 @@ class TravelBaikalParser(BaseNewsParser):
         )
         self.news_section = "/news"
 
-        self.skip_relevance_check = True
+        self.skip_relevance_check = False
 
     async def _parse_section(self) -> list[Post]:
         """Парсинг раздела новостей"""

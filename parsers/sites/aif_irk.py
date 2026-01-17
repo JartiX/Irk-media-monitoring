@@ -35,7 +35,7 @@ class AifIrkParser(BaseNewsParser):
             base_url="https://irk.aif.ru"
         )
         self.tourism_section = "/tag/turizm"
-        self.skip_relevance_check = True
+        self.skip_relevance_check = False
 
     async def _parse_section(self) -> list[Post]:
         """Парсинг раздела туризма"""
