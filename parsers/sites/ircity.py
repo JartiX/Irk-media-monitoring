@@ -3,6 +3,7 @@
 """
 import re
 import json
+import asyncio
 from typing import Optional
 from datetime import datetime
 
@@ -101,7 +102,19 @@ class IrCityParser(BaseNewsParser):
         posts = []
         url = f"{self.base_url}{self.tourism_section}"
 
-        async with aiohttp.ClientSession() as session:
+        # Создаём сессию с поддержкой cookies для DDoS-Guard
+        cookie_jar = aiohttp.CookieJar(unsafe=True)
+        async with aiohttp.ClientSession(cookie_jar=cookie_jar) as session:
+            # Первый запрос для получения DDoS-Guard cookie
+            try:
+                async with session.get(self.base_url, headers=self.DEFAULT_HEADERS, timeout=30) as response:
+                    self.log_debug(f"Получение DDoS-Guard cookie: HTTP {response.status}")
+                    # Даём время серверу установить cookie
+                    await asyncio.sleep(2)
+            except Exception as e:
+                self.log_debug(f"Ошибка при получении cookie: {e}")
+
+            # Теперь делаем основной запрос с полученным cookie
             soup = await self._fetch_page(url, session)
             if not soup:
                 return posts
