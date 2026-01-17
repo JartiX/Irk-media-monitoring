@@ -6,23 +6,23 @@ from typing import Tuple
 from loguru import logger
 
 import config
-import regex
+import patterns
 
 class KeywordFilter:
     """Фильтр контента по ключевым словам"""
 
     def __init__(self):
         # Компилируем регулярные выражения для быстрого поиска
-        self.positive_pattern = regex.TOURISM_HIGH_REGEX
-        self.low_impact_pattern = regex.TOURISM_LOW_REGEX
-        self.negative_pattern = regex.NEGATIVE_REGEX
-        self.useful_pattern = regex.USEFUL_REGEX
-        self.useless_pattern = regex.USELESS_REGEX
+        self.positive_pattern = patterns.TOURISM_HIGH_REGEX
+        self.low_impact_pattern = patterns.TOURISM_LOW_REGEX
+        self.negative_pattern = patterns.NEGATIVE_REGEX
+        self.useful_pattern = patterns.USEFUL_REGEX
+        self.useless_pattern = patterns.USELESS_REGEX
         # Политические паттерны для строгой фильтрации комментариев
-        self.political_pattern = regex.POLITICAL_REGEX
-        self.whitelist_pattern = regex.TOURISM_WHITELIST
+        self.political_pattern = patterns.POLITICAL_REGEX
+        self.whitelist_pattern = patterns.TOURISM_WHITELIST
         # Гео паттерны с меньшим влиянием
-        self.geo_pattern = regex.GEO_REGEX
+        self.geo_pattern = patterns.GEO_REGEX
 
     def is_political(self, text):
         whitelist_matches = [m.group() for m in self.whitelist_pattern.finditer(text)]
