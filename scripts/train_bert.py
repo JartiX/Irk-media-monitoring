@@ -74,8 +74,8 @@ def parse_args():
     parser.add_argument(
         "--model-path",
         type=str,
-        default="models/bert_classifier",
-        help="Путь для сохранения модели (default: models/bert_classifier)"
+        default="JartiX/bert_tourism_classifier",
+        help="Путь для сохранения модели (default: JartiX/bert_tourism_classifier)"
     )
     parser.add_argument(
         "--force",
@@ -97,16 +97,6 @@ def main():
     logger.info(f"  - Learning rate: {args.lr}")
     logger.info(f"  - Max length: {args.max_length}")
     logger.info(f"  - Model path: {args.model_path}")
-
-    # Проверяем существующую модель
-    model_dir = Path(args.model_path)
-    if model_dir.exists() and (model_dir / "config.json").exists() and not args.force:
-        logger.warning(f"Модель уже существует в {model_dir}")
-        logger.warning("Используйте --force для переобучения")
-        response = input("Переобучить модель? [y/N]: ").strip().lower()
-        if response != 'y':
-            logger.info("Обучение отменено")
-            return
 
     # Импортируем после настройки логирования
     try:
@@ -135,6 +125,14 @@ def main():
     logger.info("")
     classifier = BertClassifier(model_path=args.model_path)
 
+    # Проверка существующей модели
+    if classifier.is_trained and not args.force:
+        logger.info(f"Модель {args.model_path} уже существует на HF. Используйте --force для переобучения.")
+        response = input("Переобучить модель? [y/N]: ").strip().lower()
+        if response != "y":
+            logger.info("Обучение отменено")
+            return
+        
     start_time = datetime.now()
 
     metrics = classifier.train(

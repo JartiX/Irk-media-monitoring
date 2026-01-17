@@ -34,6 +34,9 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 _chat_ids_raw = os.getenv("TELEGRAM_CHAT_IDS", "")
 TELEGRAM_CHAT_IDS = [cid.strip() for cid in _chat_ids_raw.split(",") if cid.strip()]
 
+# HuggingFace
+HF_REPO = os.getenv("HF_REPO")
+
 # Новостные источники
 # Конфигурация вынесена в отдельные парсеры: parsers/sites/
 NEWS_SOURCES = [
@@ -86,7 +89,7 @@ ML_SETTINGS = {
     "tfidf_vectorizer_path": "models/vectorizer.joblib",
 
     # BERT настройки
-    "bert_model_path": "models/bert_classifier",
+    "bert_model_path": HF_REPO,
     "bert_base_model": "cointegrated/rubert-tiny2",
     "bert_max_length": 512,
     "bert_batch_size": 16,

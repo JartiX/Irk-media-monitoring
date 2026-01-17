@@ -3,6 +3,7 @@ BERT классификатор релевантности туристичес�
 на базе cointegrated/rubert-tiny2
 """
 import os
+import shutil
 from typing import Tuple, Optional, List
 from pathlib import Path
 
@@ -67,7 +68,7 @@ class BertClassifier:
         Args:
             model_path: Путь к сохраненной модели. Если None, используется путь из config.
         """
-        self.model_path = model_path or config.ML_SETTINGS.get("bert_model_path", "models/bert_classifier")
+        self.model_path = model_path or config.ML_SETTINGS.get("bert_model_path", "JartiX/bert_tourism_classifier")
         self.base_model = config.ML_SETTINGS.get("bert_base_model", "cointegrated/rubert-tiny2")
         self.max_length = config.ML_SETTINGS.get("bert_max_length", 256)
         self.device = self._get_device()
@@ -95,24 +96,21 @@ class BertClassifier:
 
     def _load_model(self) -> bool:
         """Загрузить обученную модель, если существует"""
-        model_dir = Path(self.model_path)
+        try:
+            logger.info(f"Загрузка BERT модели: {self.model_path}")
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
 
-        if model_dir.exists() and (model_dir / "config.json").exists():
-            try:
-                logger.info(f"Загрузка BERT модели из {model_dir}...")
-                self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
-                self.model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
-                self.model.to(self.device)
-                self.model.eval()
-                self.is_trained = True
-                logger.info("BERT модель успешно загружена")
-                return True
-            except Exception as e:
-                logger.warning(f"Ошибка загрузки BERT модели: {e}")
-                self.is_trained = False
-                return False
-        else:
-            logger.info("Сохраненная BERT модель не найдена")
+            self.model.to(self.device)
+            self.model.eval()
+            self.is_trained = True
+
+            logger.info("BERT модель успешно загружена")
+            return True
+        
+        except Exception as e:
+            logger.warning(f"Ошибка загрузки BERT модели: {e}")
+            self.is_trained = False
             return False
 
     def _initialize_base_model(self):
@@ -153,6 +151,9 @@ class BertClassifier:
         Returns:
             dict с метриками обучения
         """
+        tmp_dir = Path("tmp/bert_train")
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+
         # Используем значения из конфига если не переданы
         epochs = epochs or config.ML_SETTINGS.get("bert_epochs", 3)
         batch_size = batch_size or config.ML_SETTINGS.get("bert_batch_size", 16)
@@ -183,20 +184,16 @@ class BertClassifier:
         train_dataset = TourismDataset(X_train, y_train, self.tokenizer, max_length)
         val_dataset = TourismDataset(X_val, y_val, self.tokenizer, max_length)
 
-        # Создаем директорию для модели
-        model_dir = Path(self.model_path)
-        model_dir.mkdir(parents=True, exist_ok=True)
-
         # Настройки обучения
         training_args = TrainingArguments(
-            output_dir=str(model_dir / "checkpoints"),
+            output_dir=str(tmp_dir / "checkpoints"),
             num_train_epochs=epochs,
             per_device_train_batch_size=batch_size,
             per_device_eval_batch_size=batch_size,
             warmup_ratio=warmup_ratio,
             learning_rate=learning_rate,
             weight_decay=0.01,
-            logging_dir=str(model_dir / "logs"),
+            logging_dir=str(tmp_dir / "logs"),
             logging_steps=50,
             eval_strategy="epoch",
             save_strategy="epoch",
@@ -262,17 +259,24 @@ class BertClassifier:
         }
 
         logger.info(f"Обучение завершено. F1: {metrics['eval_f1']:.4f}")
+
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        
         return metrics
 
     def _save_model(self):
         """Сохранить модель в формате transformers (safetensors)"""
-        model_dir = Path(self.model_path)
-        model_dir.mkdir(parents=True, exist_ok=True)
+        repo_id = self.model_path
 
-        self.model.save_pretrained(str(model_dir), safe_serialization=True)
-        self.tokenizer.save_pretrained(str(model_dir))
+        logger.info(f"Загружаем модель BERT на HuggingFace Hub: {repo_id}")
 
-        logger.info(f"BERT модель сохранена в {model_dir}")
+        self.model.push_to_hub(
+            repo_id,
+            safe_serialization=True,
+        )
+        self.tokenizer.push_to_hub(repo_id)
+
+        logger.info("BERT модель успешно загружена в HuggingFace Hub")
 
     def predict(self, text: str) -> Tuple[bool, float]:
         """

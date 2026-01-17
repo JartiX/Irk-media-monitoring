@@ -31,6 +31,12 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements_bert.txt
 
+      - name: Login to HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          hf auth login --token $HF_TOKEN
+          
       - name: Create directories
         run: |
           mkdir -p logs
