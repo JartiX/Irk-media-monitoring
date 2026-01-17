@@ -1,29 +1,28 @@
 """
 Фильтрация по ключевым словам
 """
-import re
 from typing import Tuple
 
 from loguru import logger
 
 import config
-
+import regex
 
 class KeywordFilter:
     """Фильтр контента по ключевым словам"""
 
     def __init__(self):
         # Компилируем регулярные выражения для быстрого поиска
-        self.positive_pattern = config.TOURISM_HIGH_REGEX
-        self.low_impact_pattern = config.TOURISM_LOW_REGEX
-        self.negative_pattern = config.NEGATIVE_REGEX
-        self.useful_pattern = config.USEFUL_REGEX
-        self.useless_pattern = config.USELESS_REGEX
+        self.positive_pattern = regex.TOURISM_HIGH_REGEX
+        self.low_impact_pattern = regex.TOURISM_LOW_REGEX
+        self.negative_pattern = regex.NEGATIVE_REGEX
+        self.useful_pattern = regex.USEFUL_REGEX
+        self.useless_pattern = regex.USELESS_REGEX
         # Политические паттерны для строгой фильтрации комментариев
-        self.political_pattern = config.POLITICAL_REGEX
-        self.whitelist_pattern = config.TOURISM_WHITELIST
+        self.political_pattern = regex.POLITICAL_REGEX
+        self.whitelist_pattern = regex.TOURISM_WHITELIST
         # Гео паттерны с меньшим влиянием
-        self.geo_pattern = config.GEO_REGEX
+        self.geo_pattern = regex.GEO_REGEX
 
     def is_political(self, text):
         whitelist_matches = [m.group() for m in self.whitelist_pattern.finditer(text)]

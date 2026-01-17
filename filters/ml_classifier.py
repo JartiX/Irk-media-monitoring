@@ -12,6 +12,7 @@ from sklearn.metrics import classification_report
 from loguru import logger
 
 import config
+import ml
 
 
 class MLClassifier:
@@ -183,10 +184,10 @@ class MLClassifier:
         """
 
         # Примеры релевантного контента (туризм)
-        positive_examples = config.POSITIVE_ML_TRAIN
+        positive_examples = ml.POSITIVE_ML_TRAIN
 
         # Примеры нерелевантного контента
-        negative_examples = config.NEGATIVE_ML_TRAIN
+        negative_examples = ml.NEGATIVE_ML_TRAIN
 
         texts = positive_examples + negative_examples
         labels = [1] * len(positive_examples) + [0] * len(negative_examples)
