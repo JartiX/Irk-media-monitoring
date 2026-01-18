@@ -69,9 +69,9 @@ class KeywordFilter:
         # Проверяем негативные ключевые слова
         negative_matches = [m.group() for m in self.negative_pattern.finditer(text_lower)]
 
-        # Если много негативных совпадений - скорее всего не туристический контент
-        if len(negative_matches) >= 2:
-            logger.debug(f"Отклонено: много негативных ключевых слов ({negative_matches })")
+        # Если есть негативные совпадения и нет позитивных - скорее всего не туристический контент. Если позитивные совпадения есть, ML сделает окончательное решение
+        if negative_matches and positive_matches == 0:
+            logger.debug(f"Отклонено: негативные ключевые слова ({negative_matches })")
             return False, -1
         
         # Проверяем связь с политикой

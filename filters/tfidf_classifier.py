@@ -146,7 +146,7 @@ class TfidfClassifier:
                 # Если модель тоже считает пост релевантным, пропускаем
                 if is_relevant:
                     post.is_relevant = True
-
+                    post.relevance_score = score
                 else:
                     post.is_relevant = combined_score >= self.threshold
 
@@ -154,8 +154,7 @@ class TfidfClassifier:
                     if not post.is_relevant:
                         logger.debug(
                             f"Модель опровергла пост, который keyword посчитал релевантным")
-
-                post.relevance_score = combined_score
+                    post.relevance_score = combined_score
             else:
                 # Если keywords не нашёл, но ML уверен - помечаем как релевантное
                 if score >= 0.7 and post.relevance_score >= 0:  # Высокий порог для ML-only и отсутствие негативных слов

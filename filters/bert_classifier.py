@@ -398,21 +398,16 @@ class BertClassifier:
         for post, (is_relevant, score) in zip(posts, predictions):
             logger.debug(f"BERT классификация: Фильтрация поста {post.content[:100]}")
 
-            # Комбинируем с существующей оценкой от keyword filter
-            # keyword_score * 0.4 + ml_score * 0.6
-            combined_score = post.relevance_score * 0.4 + score * 0.6
-
-            if post.is_relevant:
-                # Если keyword filter считает релевантным
+            if post.is_relevant:  # Если keyword filter считает релевантным
                 if is_relevant:
                     post.is_relevant = True
+                    post.relevance_score = score
                 else:
-                    post.is_relevant = combined_score >= self.threshold
-                    if not post.is_relevant:
-                        logger.debug("BERT опроверг пост, который keyword посчитал релевантным")
-                post.relevance_score = combined_score
-            else:
-                # Если keyword filter не нашёл релевантность
+                    # Если BERT считает пост нерелевантным
+                    post.is_relevant = False
+                    post.relevance_score = score
+                    logger.debug("BERT опроверг пост, который keyword посчитал релевантным")
+            else: # Если keyword filter не нашёл релевантность
                 if score >= 0.7 and post.relevance_score >= 0:
                     # Высокий порог для ML-only решений
                     post.is_relevant = True
@@ -420,8 +415,7 @@ class BertClassifier:
                     logger.debug("BERT уверен в релевантности поста")
                 else:
                     if post.relevance_score >= 0:
-                        post.relevance_score = combined_score
-
+                        post.relevance_score = score
             logger.debug(f"Итоговый статус - Релевантность:{post.is_relevant} Score:({post.relevance_score:.3f})")
 
         relevant_count = sum(1 for p in posts if p.is_relevant)
