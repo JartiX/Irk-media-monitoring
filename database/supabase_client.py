@@ -251,6 +251,8 @@ class SupabaseClient:
         """Получить статистику по базе данных"""
         sources = self.client.table("sources").select(
             "id", count="exact").execute()
+        active_sources = self.client.table("sources").select(
+            "id", count="exact").eq("is_active", True).execute()
         posts = self.client.table("posts").select(
             "id", count="exact").execute()
         relevant_posts = self.client.table("posts").select(
@@ -268,6 +270,7 @@ class SupabaseClient:
 
         return {
             "sources_count": sources.count,
+            "active_sources_count": active_sources.count,
             "posts_count": posts.count,
             "relevant_posts_count": relevant_posts.count,
             "comments_count": comments.count,

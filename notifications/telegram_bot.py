@@ -76,6 +76,7 @@ def _format_report(stats: dict, elapsed_seconds: float, db_stats: dict | None) -
             "",
             "📈 <b>База данных:</b>",
             f"   • Источников: {db_stats['sources_count']}",
+            f"      • Из них активных: {db_stats['active_sources_count']}",
             f"   • Всего постов: {db_stats['posts_count']}",
             f"   • Релевантных: {db_stats['relevant_posts_count']}",
             f"   • Комментариев: {db_stats['comments_count']}",

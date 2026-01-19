@@ -300,6 +300,7 @@ class MediaMonitor:
             db_stats = self.db.get_stats()
             logger.info("\n📈 СТАТИСТИКА БАЗЫ ДАННЫХ")
             logger.info(f"   Всего источников: {db_stats['sources_count']}")
+            logger.info(f"      Из них активных: {db_stats['active_sources_count']}")
             logger.info(f"   Всего постов: {db_stats['posts_count']}")
             logger.info(
                 f"   Релевантных постов: {db_stats['relevant_posts_count']}")
