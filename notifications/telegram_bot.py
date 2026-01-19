@@ -61,7 +61,10 @@ def _format_report(stats: dict, elapsed_seconds: float, db_stats: dict | None) -
         f"   • Обработано: {stats['comments_processed']}",
         f"   • Новых: {stats['comments_new']}",
         f"   • Обновлено: {stats['comments_updated']}",
-        f"   • Полезных: {stats['comments_useful']}",
+        f"   • Чистых: {stats['comments_clean']}",
+        f"   • Релевантных: {stats['comments_relevant']}",
+        f"   • С политикой: {stats['comments_political']}",
+        f"   • С матом: {stats['comments_profane']}",
     ]
 
     if stats.get("errors", 0) > 0:

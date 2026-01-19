@@ -51,7 +51,10 @@ class MediaMonitor:
             "comments_processed": 0,    # всего обработано
             "comments_new": 0,          # новых добавлено
             "comments_updated": 0,      # обновлено существующих
-            "comments_useful": 0,       # полезных среди обработанных
+            "comments_clean": 0,        # чистых (без политики и мата)
+            "comments_relevant": 0,     # релевантных туризму
+            "comments_political": 0,    # с политикой
+            "comments_profane": 0,      # с матом
             "errors": 0,
         }
 
@@ -218,8 +221,17 @@ class MediaMonitor:
                         # Подсчёт комментариев
                         self.stats["comments_processed"] += len(
                             filtered_comments)
-                        self.stats["comments_useful"] += sum(
-                            1 for c in filtered_comments if c.is_useful
+                        self.stats["comments_clean"] += sum(
+                            1 for c in filtered_comments if c.is_clean
+                        )
+                        self.stats["comments_relevant"] += sum(
+                            1 for c in filtered_comments if c.is_relevant
+                        )
+                        self.stats["comments_political"] += sum(
+                            1 for c in filtered_comments if c.is_political
+                        )
+                        self.stats["comments_profane"] += sum(
+                            1 for c in filtered_comments if c.is_profane
                         )
 
                         new_count, updated_count = self._add_comments_with_stats(
@@ -274,7 +286,10 @@ class MediaMonitor:
         logger.info(f"   Обработано: {self.stats['comments_processed']}")
         logger.info(f"   ➕ Добавлено новых: {self.stats['comments_new']}")
         logger.info(f"   🔄 Обновлено: {self.stats['comments_updated']}")
-        logger.info(f"   👍 Полезных: {self.stats['comments_useful']}")
+        logger.info(f"   ✅ Чистых: {self.stats['comments_clean']}")
+        logger.info(f"   🏔️ Релевантных: {self.stats['comments_relevant']}")
+        logger.info(f"   🏛️ С политикой: {self.stats['comments_political']}")
+        logger.info(f"   🤬 С матом: {self.stats['comments_profane']}")
 
         if self.stats["errors"] > 0:
             logger.warning(f"⚠️  Ошибок: {self.stats['errors']}")

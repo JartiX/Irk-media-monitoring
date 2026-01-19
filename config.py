@@ -72,7 +72,7 @@ TELEGRAM_CHANNELS = [
 # Настройки парсинга
 PARSE_SETTINGS = {
     "max_posts_per_source": 80,
-    "days_lookback": 700,
+    "days_lookback": 2,
     "min_text_length": 100,
     "min_comment_length": 20,
     "request_delay": 1.0,

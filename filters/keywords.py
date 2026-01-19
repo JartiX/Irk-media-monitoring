@@ -20,6 +20,8 @@ class KeywordFilter:
         self.useless_pattern = patterns.USELESS_REGEX
         # Политические паттерны для строгой фильтрации комментариев
         self.political_pattern = patterns.POLITICAL_REGEX
+        # Паттерн для нецензурной лексики
+        self.profanity_pattern = patterns.PROFANITY_REGEX
         self.whitelist_pattern = patterns.TOURISM_WHITELIST
         # Паттерн с запретными словами
         self.ban_pattern = patterns.BAN_REGEX
@@ -30,14 +32,16 @@ class KeywordFilter:
         whitelist_matches = [m.group() for m in self.whitelist_pattern.finditer(text)]
         if whitelist_matches:
             logger.debug(
-                f"Пропущено: совпадения с вайтлистом ({whitelist_matches })")
+                f"Совпадения с вайтлистом ({whitelist_matches })")
             return False
         
         political_matches = [m.group() for m in self.political_pattern.finditer(text)]
         if political_matches:
             logger.debug(
-                f"Отклонено: связь с политикой ({political_matches })")
+                f"Связь с политикой ({political_matches })")
             return True
+        
+        return False
 
 
     def check_relevance(self, text: str) -> Tuple[bool, float]:
@@ -115,7 +119,8 @@ class KeywordFilter:
 
         if is_relevant:
             logger.debug(f"Релевантно ({score:.2f}): High-impact: {matched_keywords}, "
-                         f"Low-impact: {low_impact_matches}, GEO: {geo_matches}")
+                         f"Low-impact: {low_impact_matches}, GEO: {geo_matches}, "
+                         f"Negative: {negative_matches}")
 
         return is_relevant, score
 
@@ -140,84 +145,107 @@ class KeywordFilter:
 
         return posts
 
-    def check_political_content(self, text: str) -> bool:
+    def check_profanity(self, text: str) -> bool:
         """
-        Проверить наличие политического контента в тексте.
-        Строгая фильтрация: 1 совпадение = политический контент.
+        Проверить наличие нецензурной лексики в тексте.
 
         Args:
             text: Текст для проверки
 
         Returns:
-            bool: True если текст содержит политический контент
+            bool: True если текст содержит нецензурную лексику
         """
         if not text:
             return False
 
         text_lower = text.lower()
 
-
-        if self.political_pattern.search(text_lower):
-            logger.debug(f"Политический контент обнаружен в: {text[:50]}...")
+        matches = [m.group() for m in self.profanity_pattern.finditer(text_lower)]
+        if matches:
+            logger.debug(f"Нецензурная лексика обнаружена в: {text[:50]} {matches}")
             return True
 
         return False
 
+    def check_tourism_relevance(self, text: str) -> bool:
+        """
+        Проверить связь комментария с туризмом.
+
+        Args:
+            text: Текст для проверки
+
+        Returns:
+            bool: True если текст связан с туризмом
+        """
+        if not text or len(text) < config.PARSE_SETTINGS["min_comment_length"]:
+            return False
+
+        text_lower = text.lower()
+
+        # Проверяем туристические ключевые слова
+        tourism_matches = [m.group() for m in self.positive_pattern.finditer(text_lower)]
+        geo_matches = [m.group() for m in self.geo_pattern.finditer(text_lower)]
+
+        if tourism_matches:
+            logger.debug(f"Tourism matches: {tourism_matches}")
+        if geo_matches:
+            logger.debug(f"Geo matches: {geo_matches}")
+
+        # Релевантен если есть туристические слова или гео
+        return bool(tourism_matches or geo_matches)
+
     def filter_comments(self, comments: list) -> list:
         """
-        Отфильтровать список комментариев.
+        Отфильтровать список комментариев и проставить флаги.
 
-        Исключает комментарии с политическим контентом и отмечает полезные.
+        Устанавливает 4 независимых флага:
+        - is_clean: без политики и без мата
+        - is_relevant: связь с туризмом
+        - is_political: содержит политику
+        - is_profane: содержит нецензурную лексику
 
         Args:
             comments: Список комментариев
 
         Returns:
-            list: Отфильтрованный список комментариев с обновлённым флагом is_useful
+            list: Список комментариев с обновлёнными флагами
         """
-        filtered_comments = []
         political_count = 0
+        profane_count = 0
+        relevant_count = 0
+        clean_count = 0
 
         for comment in comments:
-            # Проверяем на политический контент - полностью исключаем
-            if self.check_political_content(comment.content):
+            text = comment.content
+            logger.debug(f"Фильтрация комментария {text[:60]}")
+            # Проверяем каждый флаг независимо
+            is_political = self.is_political(text)
+            is_profane = self.check_profanity(text)
+            is_relevant = self.check_tourism_relevance(text)
+
+            # Устанавливаем флаги
+            comment.is_political = is_political
+            comment.is_profane = is_profane
+            comment.is_relevant = is_relevant
+            comment.is_clean = not is_political and not is_profane
+
+            # Считаем статистику
+            if is_political:
                 political_count += 1
-                continue
+            if is_profane:
+                profane_count += 1
+            if is_relevant:
+                relevant_count += 1
+            if comment.is_clean:
+                clean_count += 1
 
-            # Проверяем полезность
-            comment.is_useful = self.check_comment_usefulness(comment.content)
-            filtered_comments.append(comment)
+        # Логируем статистику
+        total = len(comments)
+        if total > 0:
+            logger.info(
+                f"Фильтрация комментариев: всего={total}, "
+                f"чистых={clean_count}, релевантных={relevant_count}, "
+                f"политических={political_count}, с матом={profane_count}"
+            )
 
-        if political_count > 0:
-            logger.info(f"Исключено политических комментариев: {political_count}")
-
-        useful_count = sum(1 for c in filtered_comments if c.is_useful)
-        if filtered_comments:
-            logger.info(f"Полезных комментариев: {useful_count}/{len(filtered_comments)}")
-
-        return filtered_comments
-
-    def check_comment_usefulness(self, text: str) -> bool:
-        """
-        Проверить полезность комментария.
-
-        Комментарий считается полезным если содержит:
-        - Отзыв или рекомендацию
-        - Вопрос о месте/услуге
-        - Личный опыт
-        - Связь с туризмом
-        """
-        if not text or len(text) < config.PARSE_SETTINGS["min_comment_length"]:
-            return False
-        
-        text_lower = text.lower()
-
-        useful_matches = len(self.useful_pattern.findall(text_lower))
-
-        touristic_matches = len(self.positive_pattern.findall(text_lower))
-
-        useless_matches = len(self.useless_pattern.findall(text_lower))
-
-        negative_matches = len(self.negative_pattern.findall(text_lower))
-
-        return bool((useful_matches or touristic_matches) and not (useless_matches or negative_matches))
+        return comments
