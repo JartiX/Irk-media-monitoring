@@ -23,6 +23,7 @@ import numpy as np
 import config
 import ml
 
+import re
 
 class TourismDataset(Dataset):
     """Dataset для обучения BERT классификатора"""
@@ -388,8 +389,15 @@ class BertClassifier:
             logger.warning("BERT модель не обучена, пропускаем классификацию")
             return posts
 
-        # Подготавливаем тексты
-        texts = [f"{p.title or ''} {p.content}".strip() for p in posts]
+        # Подготавливаем тексты. Важно удалить всю латиницу, так как она резко неоправданно увеличивает score
+        texts = [
+            re.sub(
+                r"[A-Za-z/\*]", 
+                "", 
+                f"{p.title or ''} {p.content}".strip()
+                ) 
+            for p in posts
+            ]
 
         # Батчевое предсказание
         predictions = self.predict_batch(texts)
@@ -408,7 +416,7 @@ class BertClassifier:
                     post.relevance_score = score
                     logger.debug("BERT опроверг пост, который keyword посчитал релевантным")
             else: # Если keyword filter не нашёл релевантность
-                if score >= 0.7 and post.relevance_score >= 0:
+                if score >= 0.8 and post.relevance_score >= 0:
                     # Высокий порог для ML-only решений
                     post.is_relevant = True
                     post.relevance_score = score

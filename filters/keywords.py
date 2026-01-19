@@ -21,6 +21,8 @@ class KeywordFilter:
         # Политические паттерны для строгой фильтрации комментариев
         self.political_pattern = patterns.POLITICAL_REGEX
         self.whitelist_pattern = patterns.TOURISM_WHITELIST
+        # Паттерн с запретными словами
+        self.ban_pattern = patterns.BAN_REGEX
         # Гео паттерны с меньшим влиянием
         self.geo_pattern = patterns.GEO_REGEX
 
@@ -65,6 +67,13 @@ class KeywordFilter:
         for match in self.positive_pattern.finditer(text_lower):
             positive_matches += 1
             matched_keywords.append(match.group())
+
+        # Проверяем запретные ключевые слова
+        ban_matches = [m.group() for m in self.ban_pattern.finditer(text_lower)]
+
+        if ban_matches:
+            logger.debug(f"Отклонено: запретные ключевые слова ({ban_matches })")
+            return False, -1
 
         # Проверяем негативные ключевые слова
         negative_matches = [m.group() for m in self.negative_pattern.finditer(text_lower)]
