@@ -39,10 +39,12 @@ class Post:
     is_relevant: bool = False
     id: str = field(default_factory=lambda: str(uuid4()))
     created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def to_dict(self) -> dict:
         data = asdict(self)
         data["created_at"] = self.created_at.isoformat()
+        data["updated_at"] = self.updated_at.isoformat()
         if self.published_at:
             data["published_at"] = self.published_at.isoformat()
         return data
@@ -50,20 +52,32 @@ class Post:
 
 @dataclass
 class Comment:
-    """Комментарий к посту"""
+    """Комментарий к посту
+
+    Флаги фильтрации (независимые):
+    - is_clean: без политики и без мата
+    - is_relevant: связь с туризмом
+    - is_political: содержит политику
+    - is_profane: содержит нецензурную лексику
+    """
     post_id: str
     external_id: str
     content: str
     author: Optional[str] = None
     published_at: Optional[datetime] = None
     likes_count: int = 0
-    is_useful: bool = False
+    is_clean: bool = False       # без политики и без мата
+    is_relevant: bool = False    # связь с туризмом
+    is_political: bool = False   # содержит политику
+    is_profane: bool = False     # содержит нецензурную лексику
     id: str = field(default_factory=lambda: str(uuid4()))
     created_at: datetime = field(default_factory=datetime.utcnow)
+    updated_at: datetime = field(default_factory=datetime.utcnow)
 
     def to_dict(self) -> dict:
         data = asdict(self)
         data["created_at"] = self.created_at.isoformat()
+        data["updated_at"] = self.updated_at.isoformat()
         if self.published_at:
             data["published_at"] = self.published_at.isoformat()
         return data

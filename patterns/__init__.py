@@ -1,12 +1,13 @@
 from .geo import GEO_REGEX
 from .politics import POLITICAL_REGEX
-from .sentiment import NEGATIVE_REGEX, USEFUL_REGEX, USELESS_REGEX
+from .profanity import PROFANITY_REGEX
 from .sentiment import NEGATIVE_REGEX, USEFUL_REGEX, USELESS_REGEX, BAN_REGEX
 from .tourism import TOURISM_HIGH_REGEX, TOURISM_LOW_REGEX, TOURISM_WHITELIST
 
 __all__ = [
     "GEO_REGEX",
     "POLITICAL_REGEX",
+    "PROFANITY_REGEX",
     "NEGATIVE_REGEX",
     "USEFUL_REGEX",
     "USELESS_REGEX",

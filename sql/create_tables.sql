@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS posts (
     relevance_score FLOAT DEFAULT 0,
     is_relevant BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
 
     -- Уникальность по источнику и внешнему ID
     UNIQUE(source_id, external_id)
@@ -50,6 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_source ON posts(source_id);
 CREATE INDEX IF NOT EXISTS idx_posts_relevant ON posts(is_relevant);
 CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_updated ON posts(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_relevance_score ON posts(relevance_score DESC);
 
 -- Полнотекстовый поиск
@@ -61,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_fts ON posts USING GIN(fts);
 COMMENT ON TABLE posts IS 'Посты и новости из источников';
 COMMENT ON COLUMN posts.external_id IS 'ID поста в исходной системе';
 COMMENT ON COLUMN posts.relevance_score IS 'Оценка релевантности (0-1)';
+COMMENT ON COLUMN posts.updated_at IS 'Дата последнего обновления записи';
 
 -- ============================================
 -- Таблица комментариев
@@ -73,8 +76,12 @@ CREATE TABLE IF NOT EXISTS comments (
     content TEXT NOT NULL,
     published_at TIMESTAMPTZ,
     likes_count INTEGER DEFAULT 0,
-    is_useful BOOLEAN DEFAULT FALSE,
+    is_clean BOOLEAN DEFAULT FALSE,
+    is_relevant BOOLEAN DEFAULT FALSE,
+    is_political BOOLEAN DEFAULT FALSE,
+    is_profane BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
 
     -- Уникальность по посту и внешнему ID
     UNIQUE(post_id, external_id)
@@ -82,12 +89,47 @@ CREATE TABLE IF NOT EXISTS comments (
 
 -- Индексы для comments
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
-CREATE INDEX IF NOT EXISTS idx_comments_useful ON comments(is_useful);
+CREATE INDEX IF NOT EXISTS idx_comments_clean ON comments(is_clean);
+CREATE INDEX IF NOT EXISTS idx_comments_relevant ON comments(is_relevant);
+CREATE INDEX IF NOT EXISTS idx_comments_political ON comments(is_political);
+CREATE INDEX IF NOT EXISTS idx_comments_profane ON comments(is_profane);
 CREATE INDEX IF NOT EXISTS idx_comments_published ON comments(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_updated ON comments(updated_at DESC);
 
 -- Комментарии
 COMMENT ON TABLE comments IS 'Комментарии к постам';
-COMMENT ON COLUMN comments.is_useful IS 'Полезный комментарий (содержит отзыв/рекомендацию)';
+COMMENT ON COLUMN comments.is_clean IS 'Чистый комментарий (без политики и мата)';
+COMMENT ON COLUMN comments.is_relevant IS 'Комментарий связан с туризмом';
+COMMENT ON COLUMN comments.is_political IS 'Комментарий содержит политику';
+COMMENT ON COLUMN comments.is_profane IS 'Комментарий содержит нецензурную лексику';
+COMMENT ON COLUMN comments.updated_at IS 'Дата последнего обновления записи';
+
+-- ============================================
+-- Триггер для автоматического обновления updated_at
+-- ============================================
+
+-- Функция для обновления updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Триггер для posts
+DROP TRIGGER IF EXISTS trigger_posts_updated_at ON posts;
+CREATE TRIGGER trigger_posts_updated_at
+    BEFORE UPDATE ON posts
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Триггер для comments
+DROP TRIGGER IF EXISTS trigger_comments_updated_at ON comments;
+CREATE TRIGGER trigger_comments_updated_at
+    BEFORE UPDATE ON comments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- Представления для аналитики
@@ -126,21 +168,25 @@ WHERE p.is_relevant = TRUE
 ORDER BY p.published_at DESC
 LIMIT 100;
 
--- Полезные комментарии
-CREATE OR REPLACE VIEW useful_comments_view AS
+-- Чистые релевантные комментарии
+CREATE OR REPLACE VIEW clean_relevant_comments_view AS
 SELECT
     c.id,
     c.author,
     c.content,
     c.published_at,
     c.likes_count,
+    c.is_clean,
+    c.is_relevant,
+    c.is_political,
+    c.is_profane,
     p.title as post_title,
     p.url as post_url,
     s.name as source_name
 FROM comments c
 JOIN posts p ON p.id = c.post_id
 JOIN sources s ON s.id = p.source_id
-WHERE c.is_useful = TRUE
+WHERE c.is_clean = TRUE AND c.is_relevant = TRUE
 ORDER BY c.published_at DESC;
 
 -- ============================================
@@ -187,8 +233,11 @@ BEGIN
         'posts_count', (SELECT COUNT(*) FROM posts),
         'relevant_posts_count', (SELECT COUNT(*) FROM posts WHERE is_relevant = TRUE),
         'comments_count', (SELECT COUNT(*) FROM comments),
-        'useful_comments_count', (SELECT COUNT(*) FROM comments WHERE is_useful = TRUE),
-        'last_update', (SELECT MAX(created_at) FROM posts)
+        'clean_comments_count', (SELECT COUNT(*) FROM comments WHERE is_clean = TRUE),
+        'relevant_comments_count', (SELECT COUNT(*) FROM comments WHERE is_relevant = TRUE),
+        'political_comments_count', (SELECT COUNT(*) FROM comments WHERE is_political = TRUE),
+        'profane_comments_count', (SELECT COUNT(*) FROM comments WHERE is_profane = TRUE),
+        'last_update', (SELECT MAX(updated_at) FROM posts)
     ) INTO result;
 
     RETURN result;

@@ -173,7 +173,10 @@ class SupabaseClient:
                 "content": comment.content,
                 "author": comment.author,
                 "likes_count": comment.likes_count,
-                "is_useful": comment.is_useful,
+                "is_clean": comment.is_clean,
+                "is_relevant": comment.is_relevant,
+                "is_political": comment.is_political,
+                "is_profane": comment.is_profane,
             }
             if comment.published_at:
                 update_data["published_at"] = comment.published_at.isoformat()
@@ -196,22 +199,51 @@ class SupabaseClient:
                 added.append(result)
         return added
 
-    def get_comments(self, post_id: str, useful_only: bool = False) -> list[dict]:
-        """Получить комментарии к посту"""
+    def get_comments(
+        self,
+        post_id: str,
+        clean_only: bool = False,
+        relevant_only: bool = False
+    ) -> list[dict]:
+        """Получить комментарии к посту
+
+        Args:
+            post_id: ID поста
+            clean_only: только чистые (без политики и мата)
+            relevant_only: только релевантные туризму
+        """
         query = self.client.table("comments").select(
             "*").eq("post_id", post_id)
 
-        if useful_only:
-            query = query.eq("is_useful", True)
+        if clean_only:
+            query = query.eq("is_clean", True)
+        if relevant_only:
+            query = query.eq("is_relevant", True)
 
         response = query.order("published_at", desc=True).execute()
         return response.data
 
-    def update_comment_usefulness(self, comment_id: str, is_useful: bool):
-        """Обновить полезность комментария"""
-        self.client.table("comments").update({
-            "is_useful": is_useful
-        }).eq("id", comment_id).execute()
+    def update_comment_flags(
+        self,
+        comment_id: str,
+        is_clean: bool = None,
+        is_relevant: bool = None,
+        is_political: bool = None,
+        is_profane: bool = None
+    ):
+        """Обновить флаги комментария"""
+        update_data = {}
+        if is_clean is not None:
+            update_data["is_clean"] = is_clean
+        if is_relevant is not None:
+            update_data["is_relevant"] = is_relevant
+        if is_political is not None:
+            update_data["is_political"] = is_political
+        if is_profane is not None:
+            update_data["is_profane"] = is_profane
+
+        if update_data:
+            self.client.table("comments").update(update_data).eq("id", comment_id).execute()
 
     # === Статистика ===
 
@@ -225,13 +257,22 @@ class SupabaseClient:
             "id", count="exact").eq("is_relevant", True).execute()
         comments = self.client.table("comments").select(
             "id", count="exact").execute()
-        useful_comments = self.client.table("comments").select(
-            "id", count="exact").eq("is_useful", True).execute()
+        clean_comments = self.client.table("comments").select(
+            "id", count="exact").eq("is_clean", True).execute()
+        relevant_comments = self.client.table("comments").select(
+            "id", count="exact").eq("is_relevant", True).execute()
+        political_comments = self.client.table("comments").select(
+            "id", count="exact").eq("is_political", True).execute()
+        profane_comments = self.client.table("comments").select(
+            "id", count="exact").eq("is_profane", True).execute()
 
         return {
             "sources_count": sources.count,
             "posts_count": posts.count,
             "relevant_posts_count": relevant_posts.count,
             "comments_count": comments.count,
-            "useful_comments_count": useful_comments.count,
+            "clean_comments_count": clean_comments.count,
+            "relevant_comments_count": relevant_comments.count,
+            "political_comments_count": political_comments.count,
+            "profane_comments_count": profane_comments.count,
         }
