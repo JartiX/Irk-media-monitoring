@@ -62,11 +62,16 @@ VK_GROUPS = [
 
 # Telegram каналы
 TELEGRAM_CHANNELS = [
-    "Baikal_Daily",
-    "Baikal_People",
-    "ircity_ru",
-    "irkru",
-    "admirk",
+    # "Baikal_Daily",
+    # "Baikal_People",
+    # "ircity_ru",
+    # "irkru",
+    # "admirk",
+    "visitirkutskregion",
+    "baikalgo",
+    "tuktukolkhon38",
+    "baikalpro38",
+    "nuur_1642",
 ]
 
 # Настройки парсинга
