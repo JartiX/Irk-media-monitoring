@@ -69,7 +69,10 @@ class BertClassifier:
         Args:
             model_path: Путь к сохраненной модели. Если None, используется путь из config.
         """
-        self.model_path = model_path or config.ML_SETTINGS.get("bert_model_path", "JartiX/bert_tourism_classifier")
+        self.model_path = model_path or config.ML_SETTINGS.get("bert_model_path")
+        if not self.model_path:
+            raise Exception("bert_model_path не задан. Укажите HF_REPO в .env")
+        
         self.base_model = config.ML_SETTINGS.get("bert_base_model", "cointegrated/rubert-tiny2")
         self.max_length = config.ML_SETTINGS.get("bert_max_length", 256)
         self.device = self._get_device()
@@ -135,19 +138,27 @@ class BertClassifier:
         warmup_ratio: float = 0.1,
         max_length: int = None,
         validation_split: float = 0.2,
+        x_val: Optional[List[str]] = None,
+        y_val: Optional[List[int]] = None,
+        skip_push: bool = False,
+        local_save_dir: Optional[str] = None,
     ) -> dict:
         """
         Обучить классификатор с fine-tuning.
 
         Args:
-            texts: Список текстов для обучения
+            texts: Список текстов для обучения (если x_val не передан — будет внутренне разбит на train/val)
             labels: Метки (1 = релевантно туризму, 0 = нет)
             epochs: Количество эпох обучения
             batch_size: Размер батча
             learning_rate: Скорость обучения
             warmup_ratio: Доля шагов для warmup
             max_length: Максимальная длина токенизации
-            validation_split: Доля данных для валидации
+            validation_split: Доля данных для валидации (используется только если x_val не передан)
+            x_val: Готовая валидационная выборка текстов (если задано — internal split пропускается)
+            y_val: Метки валидационной выборки
+            skip_push: Не пушить модель на HF Hub (сохранить только локально)
+            local_save_dir: Путь для локального сохранения (используется при skip_push=True)
 
         Returns:
             dict с метриками обучения
@@ -172,12 +183,17 @@ class BertClassifier:
         self._initialize_base_model()
 
         # Разделяем данные
-        X_train, X_val, y_train, y_val = train_test_split(
-            texts, labels,
-            test_size=validation_split,
-            random_state=42,
-            stratify=labels
-        )
+        if x_val is not None and y_val is not None:
+            X_train, y_train = texts, labels
+            X_val, y_val = x_val, y_val
+            logger.info("Используется переданная валидационная выборка")
+        else:
+            X_train, X_val, y_train, y_val = train_test_split(
+                texts, labels,
+                test_size=validation_split,
+                random_state=42,
+                stratify=labels
+            )
 
         logger.info(f"Train: {len(X_train)}, Validation: {len(X_val)}")
 
@@ -247,7 +263,7 @@ class BertClassifier:
                 logger.info(line)
 
         # Сохраняем модель
-        self._save_model()
+        self._save_model(skip_push=skip_push, local_save_dir=local_save_dir)
         self.is_trained = True
 
         metrics = {
@@ -265,10 +281,18 @@ class BertClassifier:
         
         return metrics
 
-    def _save_model(self):
+    def _save_model(self, skip_push: bool = False, local_save_dir: Optional[str] = None):
         """Сохранить модель в формате transformers (safetensors)"""
-        repo_id = self.model_path
+        if skip_push:
+            save_dir = Path(local_save_dir) if local_save_dir else Path("models/bert_local")
+            save_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Локальное сохранение BERT модели: {save_dir}")
+            self.model.save_pretrained(str(save_dir), safe_serialization=True)
+            self.tokenizer.save_pretrained(str(save_dir))
+            logger.info("BERT модель сохранена локально")
+            return
 
+        repo_id = self.model_path
         logger.info(f"Загружаем модель BERT на HuggingFace Hub: {repo_id}")
 
         self.model.push_to_hub(

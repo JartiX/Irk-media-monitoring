@@ -6,3 +6,6 @@ safetensors>=0.4.0
 
 # HuggingFace Hub (загрузить / скачать модель)
 huggingface_hub>=0.20.0
+
+# Визуализация метрик оценки (scripts/evaluate_bert.py)
+matplotlib>=3.8.0
