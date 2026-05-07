@@ -7,8 +7,8 @@ import asyncio
 from typing import Optional
 from datetime import datetime
 
-import aiohttp
 from bs4 import BeautifulSoup
+from curl_cffi.requests import AsyncSession
 
 from ..base_news import BaseNewsParser
 from database.models import Post
@@ -88,51 +88,49 @@ class IrCityParser(BaseNewsParser):
         self.tourism_section = "/text/tags/turizm/"
         self.skip_relevance_check = False
 
-        # Дополнительные заголовки для IrCity
-        self.DEFAULT_HEADERS.update({
-            "Referer": "https://ircity.ru/",
-            "Origin": "https://ircity.ru",
-            "Sec-Ch-Ua": '"Not A(Brand";v="99", "Google Chrome";v="131", "Chromium";v="131"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
-        })
+    async def _fetch_with_curl(self, session: AsyncSession, url: str, max_retries: int = 3) -> Optional[BeautifulSoup]:
+        """Загрузить страницу через curl_cffi (Chrome TLS fingerprint) с retry."""
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    delay = 2 ** attempt
+                    self.log_debug(f"Повторная попытка #{attempt + 1} после {delay}s для {url}")
+                    await asyncio.sleep(delay)
+                response = await session.get(url, timeout=30)
+                if response.status_code == 200:
+                    return BeautifulSoup(response.text, "lxml")
+                if response.status_code in (403, 428, 429):
+                    last_error = f"HTTP {response.status_code}"
+                    self.log_debug(f"HTTP {response.status_code} для {url} (попытка {attempt + 1}/{max_retries})")
+                    continue
+                self.log_debug(f"HTTP {response.status_code} для {url}")
+                return None
+            except Exception as e:
+                last_error = str(e)
+                self.log_error(f"Ошибка загрузки {url}: {e} (попытка {attempt + 1}/{max_retries})")
+
+        if last_error:
+            self.log_error(f"Не удалось загрузить {url} после {max_retries} попыток. Последняя ошибка: {last_error}")
+        return None
 
     async def _parse_section(self) -> list[Post]:
         """Парсинг раздела туризма"""
         posts = []
         url = f"{self.base_url}{self.tourism_section}"
 
-        # Создаём сессию с поддержкой cookies для DDoS-Guard
-        cookie_jar = aiohttp.CookieJar(unsafe=True)
-        connector = aiohttp.TCPConnector(ssl=False)  # Отключаем SSL verification для DDoS-Guard
-        async with aiohttp.ClientSession(cookie_jar=cookie_jar, connector=connector) as session:
-            # Первый запрос для получения DDoS-Guard cookie (следуем редиректам)
+        # curl_cffi с Chrome TLS impersonation для обхода DDoS-Guard
+        # Cookies, заголовки и JA3-fingerprint как у настоящего Chrome.
+        async with AsyncSession(impersonate="chrome131") as session:
+            # Прогрев: запрос на главную, чтобы DDoS-Guard выдал cookie
             try:
-                async with session.get(
-                    self.base_url,
-                    headers=self.DEFAULT_HEADERS,
-                    timeout=30,
-                    allow_redirects=True
-                ) as response:
-                    # Читаем содержимое, чтобы cookie точно установился
-                    await response.text()
-                    self.log_debug(f"Получение DDoS-Guard cookie: HTTP {response.status}")
-
-                    # Логируем все cookies
-                    cookies = session.cookie_jar.filter_cookies(self.base_url)
-                    if cookies:
-                        cookie_names = [cookie.key for cookie in cookies.values()]
-                        self.log_debug(f"Получены cookies: {', '.join(cookie_names)}")
-                    else:
-                        self.log_debug("⚠️ Cookies не получены - DDoS-Guard может блокировать")
-
-                    # Увеличиваем задержку для установки cookie
-                    await asyncio.sleep(3)
+                warmup = await session.get(self.base_url, timeout=30)
+                self.log_debug(f"Прогрев DDoS-Guard: HTTP {warmup.status_code}")
+                await asyncio.sleep(2)
             except Exception as e:
-                self.log_debug(f"Ошибка при получении cookie: {e}")
+                self.log_debug(f"Ошибка при прогреве: {e}")
 
-            # Теперь делаем основной запрос с полученным cookie
-            soup = await self._fetch_page(url, session)
+            soup = await self._fetch_with_curl(session, url)
             if not soup:
                 self.log_info("⚠️ Не удалось получить данные (возможна блокировка DDoS-Guard)")
                 return posts
@@ -142,7 +140,7 @@ class IrCityParser(BaseNewsParser):
 
             for link in links[:self.max_posts]:
                 article_url = self._make_absolute_url(link)
-                article_soup = await self._fetch_page(article_url, session)
+                article_soup = await self._fetch_with_curl(session, article_url)
 
                 if article_soup:
                     post = await self._parse_article(article_soup, article_url)
