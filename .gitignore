@@ -184,3 +184,15 @@ pyvenv.cfg
 pip-selfcheck.json
 checkpoints/
 /models/bert_classifier
+/models
+/docs
+
+*.rar
+*.stackdump
+
+data/*
+!data/analytics
+data/analytics/*
+!data/analytics/eval_gold.csv
+
+tmp/
