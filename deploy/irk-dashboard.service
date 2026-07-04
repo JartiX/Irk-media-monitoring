@@ -1,0 +1,28 @@
+# systemd-юнит для Streamlit-дашборда.
+# Установка:
+#   sudo cp deploy/irk-dashboard.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now irk-dashboard
+# Логи: journalctl -u irk-dashboard -f
+# Подставь свои пути/пользователя (WorkingDirectory, ExecStart, User).
+
+[Unit]
+Description=Irk Media Monitoring - Streamlit dashboard (toponym analytics)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/irk-media-monitoring
+# .env c SUPABASE_URL / SUPABASE_KEY (формат KEY=value, без export/кавычек)
+EnvironmentFile=/opt/irk-media-monitoring/.env
+ExecStart=/opt/irk-media-monitoring/.venv/bin/streamlit run dashboard/app.py \
+    --server.port 8501 \
+    --server.address 127.0.0.1 \
+    --server.headless true \
+    --browser.gatherUsageStats false
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
