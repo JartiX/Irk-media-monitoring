@@ -38,6 +38,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements_bert.txt
+          pip install -r requirements_analytics.txt
 
       - name: Login to HuggingFace
         env:
@@ -68,6 +69,14 @@ jobs:
           # HuggingFace
           HF_REPO: ${{ secrets.HF_REPO }}
         run: python main.py
+
+      - name: Run toponym analytics
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        # инкрементально: обрабатывает только новые посты (analyzed_at IS NULL) и пишет в Supabase.
+        # post-limit ограничивает прогон по времени (первичный бэклог дренируется за несколько дней).
+        run: python -m analytics.pipeline --source supabase --incremental --post-limit 800 --to-db
 
       - name: Upload logs
         if: always()
