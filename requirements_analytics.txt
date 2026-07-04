@@ -1,0 +1,19 @@
+# Зависимости слоя аналитики топонимов
+# Установка: .venv\Scripts\pip.exe install -r requirements_analytics.txt
+
+# --- NLP ---
+natasha>=1.6.0          # сегментация, NER (LOC), морфология, синтаксис
+pymorphy3>=2.0.0        # нормализация/лемматизация, согласование
+
+# --- Геокодинг ---
+geopy>=2.4.0            # Nominatim (OpenStreetMap)
+
+# --- Данные ---
+pandas>=2.0.0
+openpyxl>=3.1.0         # чтение VK *.xlsx
+
+# --- Дашборд ---
+streamlit>=1.30.0
+plotly>=5.18.0
+wordcloud>=1.9.0        # облако слов (тональность), доработка по замечанию руководителя
+matplotlib>=3.7.0       # рендеринг облака слов в Streamlit
