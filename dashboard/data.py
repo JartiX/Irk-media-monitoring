@@ -73,7 +73,7 @@ def load_analytics():
     return m, t, s, src
 
 
-_KIND_BY_POS = {"VERB": "глагол", "ADJ": "прилагательное"}
+_KIND_BY_POS = {"VERB": "глагол", "ADJ": "прилагательное", "NOUN": "существительное"}
 
 
 def word_stats(mentions: pd.DataFrame, syntax: pd.DataFrame, post_ids=None) -> pd.DataFrame:

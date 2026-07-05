@@ -24,6 +24,12 @@ from patterns.geo import GEO_REGEX
 USE_ML_SENTIMENT = False
 
 _HEAD_RELS = {"obl", "nsubj", "obj", "nmod", "iobj"}
+# отношения, по которым берём существительное-вершину топонима («берег Байкала», «остров Ольхон»)
+_NOUN_RELS = _HEAD_RELS | {"appos", "flat", "conj"}
+# слишком общие существительные — не характеризуют место
+NOUN_STOP = {"год", "день", "время", "раз", "человек", "место", "часть", "число", "количество",
+             "километр", "метр", "рубль", "процент", "случай", "вопрос", "работа", "данные",
+             "информация", "конец", "начало", "неделя", "месяц", "сутки", "название"}
 # частицы/интенсификаторы, сквозь которые «не» всё ещё действует на оценочное слово
 _PARTICLES = {"очень", "так", "совсем", "особо", "уж", "же", "то", "-то", "настолько", "столь", "слишком"}
 
@@ -225,6 +231,11 @@ def analyze_sentence(sentence: str):
             if lem not in VERB_STOP:      # без служебных глаголов
                 links.append({"toponym": t["norm"], "word": gov.text,
                               "normal_form": lem, "pos": "VERB", "deprel": t["head"].rel})
+        elif gov is not None and gov.pos == "NOUN" and t["head"].rel in _NOUN_RELS:
+            lem = _lemma(gov.text)
+            if lem not in NOUN_STOP and len(lem) > 2:   # существительное-вершина топонима
+                links.append({"toponym": t["norm"], "word": gov.text,
+                              "normal_form": lem, "pos": "NOUN", "deprel": t["head"].rel})
         for tok in tokens:
             if tok.head_id in t["ids"] and tok.pos == "ADJ" and tok.rel == "amod":
                 links.append({"toponym": t["norm"], "word": tok.text,

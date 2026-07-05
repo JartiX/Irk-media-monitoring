@@ -175,11 +175,12 @@ with c2:
 def _wordcloud_section(mentions, syntax, fm):
     st.subheader("Облако слов · размер = частота, цвет = тональность")
     st.caption("🟩 позитивный контекст · 🟥 негативный · ⬜ нейтральный")
-    kind = st.radio("Тип слов", ["Все", "Топонимы", "Глаголы", "Прилагательные"],
+    kind = st.radio("Тип слов", ["Все", "Топонимы", "Существительные", "Глаголы", "Прилагательные"],
                     horizontal=True, key="wc_kind")
     post_ids = set(fm["post_id"]) if "post_id" in fm.columns else None
     ws = word_stats(mentions, syntax, post_ids)
-    _kmap = {"Топонимы": "топоним", "Глаголы": "глагол", "Прилагательные": "прилагательное"}
+    _kmap = {"Топонимы": "топоним", "Существительные": "существительное",
+             "Глаголы": "глагол", "Прилагательные": "прилагательное"}
     if kind in _kmap:
         ws = ws[ws["kind"] == _kmap[kind]]
     wc_fig = _wordcloud_fig(ws)
